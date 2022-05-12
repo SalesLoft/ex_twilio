@@ -15,7 +15,8 @@ defmodule ExTwilio.JWT.AccessTokenTest do
                  AccessToken.ChatGrant.new(service_sid: "sid"),
                  AccessToken.VideoGrant.new(room: "room")
                ],
-               expires_in: 86_400
+               expires_in: 86_400,
+               region: "region"
              ) == %AccessToken{
                token_identifier: "id",
                account_sid: "sid",
@@ -26,7 +27,8 @@ defmodule ExTwilio.JWT.AccessTokenTest do
                  %AccessToken.ChatGrant{service_sid: "sid"},
                  %AccessToken.VideoGrant{room: "room"}
                ],
-               expires_in: 86_400
+               expires_in: 86_400,
+               region: "region"
              }
     end
   end
@@ -47,7 +49,8 @@ defmodule ExTwilio.JWT.AccessTokenTest do
               outgoing_application_params: %{key: "value"}
             )
           ],
-          expires_in: 86_400
+          expires_in: 86_400,
+          region: "region"
         )
         |> AccessToken.to_jwt!()
 
@@ -68,6 +71,43 @@ defmodule ExTwilio.JWT.AccessTokenTest do
                },
                "identity" => "user@email.com"
              }
+    end
+
+    test "signs Twilio JWT with region header when present" do
+      token =
+        AccessToken.new(
+          token_identifier: "id",
+          account_sid: "sid",
+          api_key: "sid",
+          api_secret: "secret",
+          identity: "user@email.com",
+          grants: [AccessToken.ChatGrant.new(service_sid: "sid")],
+          expires_in: 86_400,
+          region: "us1"
+        )
+        |> AccessToken.to_jwt!()
+
+      {:ok, headers} = Joken.peek_header(token)
+
+      assert headers["twr"] == "us1"
+    end
+
+    test "does not include region header in Twilio JWT in when not provided" do
+      token =
+        AccessToken.new(
+          token_identifier: "id",
+          account_sid: "sid",
+          api_key: "sid",
+          api_secret: "secret",
+          identity: "user@email.com",
+          grants: [AccessToken.ChatGrant.new(service_sid: "sid")],
+          expires_in: 86_400
+        )
+        |> AccessToken.to_jwt!()
+
+      {:ok, headers} = Joken.peek_header(token)
+
+      assert_raise KeyError, fn -> Map.fetch!(headers, "twr") end
     end
 
     test "validates binary keys" do
