@@ -17,7 +17,8 @@ defmodule ExTwilio.JWT.AccessToken do
             api_secret: nil,
             identity: nil,
             grants: [],
-            expires_in: nil
+            expires_in: nil,
+            region: nil
 
   @type t :: %__MODULE__{
           account_sid: String.t(),
@@ -25,7 +26,8 @@ defmodule ExTwilio.JWT.AccessToken do
           api_secret: String.t(),
           identity: String.t(),
           grants: [ExTwilio.JWT.Grant.t()],
-          expires_in: integer
+          expires_in: integer,
+          region: String.t()
         }
 
   @doc """
@@ -39,7 +41,8 @@ defmodule ExTwilio.JWT.AccessToken do
         api_secret: "secret",
         identity: "user@email.com",
         expires_in: 86_400,
-        grants: [AccessToken.ChatGrant.new(service_sid: "sid")]
+        grants: [AccessToken.ChatGrant.new(service_sid: "sid")],
+        region: 'us1'
       )
 
   """
@@ -62,7 +65,8 @@ defmodule ExTwilio.JWT.AccessToken do
           api_secret: "secret",
           identity: "user@email.com",
           expires_in: 86_400,
-          grants: [AccessToken.ChatGrant.new(service_sid: "sid")]
+          grants: [AccessToken.ChatGrant.new(service_sid: "sid")],
+          region: 'us1'
         )
 
       AccessToken.to_jwt!(token)
@@ -90,12 +94,7 @@ defmodule ExTwilio.JWT.AccessToken do
       |> add_claim("exp", fn -> (DateTime.utc_now() |> DateTime.to_unix()) + token.expires_in end)
       |> add_claim("iat", fn -> DateTime.utc_now() |> DateTime.to_unix() end)
 
-    signer =
-      Joken.Signer.create("HS256", token.api_secret, %{
-        "typ" => "JWT",
-        "alg" => "HS256",
-        "cty" => "twilio-fpa;v=1"
-      })
+    signer = Joken.Signer.create("HS256", token.api_secret, headers(token))
 
     Joken.generate_and_sign!(token_config, %{}, signer)
   end
@@ -113,6 +112,20 @@ defmodule ExTwilio.JWT.AccessToken do
       end)
 
     grants
+  end
+
+  defp headers(%__MODULE__{region: region}) when is_binary(region) do
+    Map.put(base_headers(), "twr", region)
+  end
+
+  defp headers(_token), do: base_headers()
+
+  defp base_headers do
+    %{
+      "typ" => "JWT",
+      "alg" => "HS256",
+      "cty" => "twilio-fpa;v=1"
+    }
   end
 
   defp random_str do
