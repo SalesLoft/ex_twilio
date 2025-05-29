@@ -27,6 +27,14 @@ defmodule ExTwilio.UrlGeneratorTest do
     def children, do: []
   end
 
+  defmodule UserDefinedMessage do
+    defstruct sid: nil, account_sid: nil, call_sid: nil, date_created: nil
+    def resource_name, do: "UserDefinedMessages"
+    def resource_collection_name, do: "user_defined_messages"
+    def parents, do: [:account, :call]
+    def children, do: []
+  end
+
   describe "query strings" do
     test "to_query_string can handle a value of type list without error" do
       params = [
@@ -55,6 +63,15 @@ defmodule ExTwilio.UrlGeneratorTest do
 
       assert ExTwilio.UrlGenerator.build_url(Submodule.Child, nil, options) ==
                "https://api.twilio.com/2010-04-01/Accounts/43/Parents/4551/Children.json"
+    end
+  end
+
+  describe "building urls for UserDefinedMessage" do
+    test "builds a correct url for UserDefinedMessage with call and account" do
+      options = [account: "AC123", call: "CA456"]
+
+      assert ExTwilio.UrlGenerator.build_url(UserDefinedMessage, nil, options) ==
+               "https://api.twilio.com/2010-04-01/Accounts/AC123/Calls/CA456/UserDefinedMessages.json"
     end
   end
 
